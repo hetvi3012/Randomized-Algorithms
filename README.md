@@ -120,3 +120,23 @@ This chapter explores algorithms that leverage algebra, primarily through **fing
     * If $G$ has *no* perfect matching, $\det(A_G)$ was the zero polynomial, so $\det(A')$ will *always* be 0.
     * If $G$ *has* a perfect matching, $\det(A_G)$ was a non-zero polynomial, so $\det(A')$ will be **non-zero with high probability**.
     * Our implementation computes the determinant modulo a prime $p$ to prevent integer overflow.
+
+## Conclusion
+
+This project successfully implemented a suite of 8 algorithms, providing a practical demonstration of the two major paradigms presented in the course: **Random Walks** (Chapter 6) and **Algebraic Techniques** (Chapter 7).
+
+The implementations from **Chapter 6** (2-SAT, STCON, BPP Amplification) highlight how the statistical properties of Markov chains can be harnessed for algorithm design. We saw how a complex problem can be modeled as:
+
+* A **biased 1D random walk** to find a guaranteed solution (2-SAT).
+* A clever **space-bounded walk** to solve directed connectivity (STCON).
+* A **rapidly-mixing walk** on an implicit expander graph to achieve exponential probability amplification (BPP).
+
+The implementations from **Chapter 7** (Freivalds', Karp-Rabin, Perfect Matching) demonstrate the power of **algebraic fingerprinting**. By mapping large, complex objects (matrices, strings, graphs) to small, random algebraic values (vectors, modular numbers, determinants), we were able to solve problems with remarkable efficiency. We saw this in:
+
+* Checking matrix multiplication *faster* than computing it (Freivalds' Technique).
+* Finding string patterns in linear time with a rolling hash (Karp-Rabin).
+* Solving a core graph problem (Perfect Matching) with a non-obvious algebraic tool (the determinant).
+
+Finally, this project explored the crucial difference between **Monte Carlo** algorithms (which are fast but can err, like Freivalds') and **Las Vegas** algorithms (which are always correct but have a variable runtime, like the verified Karp-Rabin).
+
+Overall, this project bridges the gap between theory and practice, demonstrating that randomization is a powerful, flexible, and essential tool for creating algorithms that are often simpler, faster, or more space-efficient than their deterministic counterparts.

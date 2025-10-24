@@ -1,6 +1,6 @@
 # Randomized Algorithms: Course Project Implementations
 
-This repository contains C++ implementations of 8 key randomized algorithms from a course on Randomized Algorithms. The implementations are based on the concepts presented in:
+This repository contains C++ implementations of key randomized algorithms from a course on Randomized Algorithms. The implementations are based on the concepts presented in:
 
 * **Chapter 6: Markov Chains and Random Walks**
 * **Chapter 7: Algebraic Techniques**
@@ -22,13 +22,14 @@ g++ -std=c++17 -Wall -o freivalds freivalds.cpp
 # Then run it
 ./freivalds
 ```
+
 ## Chapter 6: Markov Chains and Random Walks
 
 This chapter explores algorithms based on the statistical properties of random walks on graphs, such as hitting times, cover times, and the "mixing rate" of a Markov chain.
 
 ### 1. Randomized 2-SAT (Section 6.1)
 
-* **File:** `2SAT.cpp`
+* **File:** `randomized-2-sat.cpp`
 * **Problem:** Find a satisfying truth assignment for a 2-CNF (Conjunctive Normal Form) formula, or determine that none exists.
 * **Core Idea (The Random Walk):**
     * This algorithm is a classic example of a **biased random walk on a line**.
@@ -38,27 +39,96 @@ This chapter explores algorithms based on the statistical properties of random w
     * The "position" of our walk is the number of variables in our assignment that match a fixed (but unknown) satisfying assignment, $A$.
     * Because the clause is unsatisfied, at least one of its literals must be "wrong" (i.e., different from $A$). This means we have a **$\ge 1/2$ probability** of flipping a "wrong" variable to a "right" one, moving us *closer* to the solution $A$.
     * This bias guarantees that the walk will find a satisfying assignment (if one exists) in $O(n^2)$ expected steps. Our implementation runs for $2n^2$ steps as a timeout.
+* **Implementation Details:**
+    * Uses `Literal` and `Clause` structures for clean formula representation
+    * Random initial assignment followed by iterative variable flipping
+    * Tests two formulas: one satisfiable (3 variables) and one unsatisfiable (1 variable)
 
-### 2. Directed s-t Connectivity (STCON) (Section 6.6.2)
+### 2. Undirected s-t Connectivity (USTCON) via Random Walk
 
-* **File:** `STCON.cpp`
-* **Problem:** Determine if a path exists from a vertex `s` to a vertex `t` in a **directed graph** using only **$O(\log n)$ memory**.
-* **Core Idea (Balancing Probabilities):**
-    * A simple random walk isn't enough, as it can get "stuck" in dead ends or parts of the graph that cannot reach `t`. This algorithm cleverly works by balancing two very small probabilities:
-    * **Walk Phase:** The algorithm starts a random walk from `s` for $n-1$ steps. The probability of finding a specific path to `t` is tiny but non-zero (at least $p \ge 1/n^n$). If `t` is found, return `YES`.
-    * **Quit Phase:** If the walk fails (hits a dead end or times out), the algorithm flips $k = n \log n$ coins. If all $k$ coins land heads (an event with probability $q = 1/2^k \approx 1/n^n$), the algorithm gives up and returns `NO`.
-    * Because the probability of success ($p$) is at least as large as the probability of quitting ($q$), the algorithm is guaranteed to find the path (if one exists) with probability $> 1/2$ before it erroneously quits.
+* **File:** `randomized-ustcon.cpp`
+* **Problem:** Determine if a path exists from vertex `s` to vertex `t` in an **undirected graph** using a simple random walk.
+* **Core Idea (Cover Time):**
+    * For undirected graphs, a simple random walk is sufficient due to the **cover time** theorem.
+    * The algorithm starts at `s` and takes random steps along edges.
+    * At each step, it randomly selects a neighbor and moves to it.
+    * If it reaches `t`, the path exists. If the walk hits a dead-end (no neighbors), it declares no path exists.
+    * The **cover time** of a connected undirected graph is $O(n^3)$, meaning the walk will visit all reachable vertices within $2n^3$ steps with high probability.
+* **Implementation Details:**
+    * Adjacency list representation using `vector<vector<int>>`
+    * Maximum walk length: $2n^3$ steps
+    * Early termination on reaching target or hitting dead-end
+    * Tests both connected and disconnected graph scenarios
 
-### 3. BPP Probability Amplification (Section 6.8)
+### 3. Universal Traversal Sequence (UTS) for USTCON
 
-* **File:** `BPP_Amplification.cpp`
-* **Problem:** Reduce the error of a BPP (Bounded-error Probabilistic Polynomial-time) algorithm from a constant (e.g., 1/100) to an exponentially small value ($1/2^k$).
+* **File:** `universal-traversal-sequence.cpp`
+* **Problem:** Use a **deterministic** Universal Traversal Sequence to solve USTCON on regular graphs without using randomness during the walk.
+* **Core Idea (Derandomization):**
+    * A Universal Traversal Sequence is a predetermined sequence of edge labels that, when followed from any starting vertex in any $d$-regular graph on $n$ vertices, will visit all vertices.
+    * The algorithm takes a **labeled graph** where edges at each vertex are labeled $0, 1, \ldots, d-1$.
+    * Instead of making random choices, it follows the UTS: at each step, it takes the edge with the label specified by the next element in the sequence.
+    * The existence of polynomial-length UTS sequences remains an open problem, but they provide a theoretical framework for derandomizing USTCON.
+* **Implementation Details:**
+    * Requires graphs with labeled edges (represented as `vector<vector<int>>` where `graph[u][label] = v`)
+    * Takes a pre-computed UTS as input
+    * Purely deterministic traversal following the sequence
+    * Demonstrates the concept on small regular graphs (triangle with degree 2, disconnected graph with degree 1)
+
+### 4. Directed s-t Connectivity (STCON) via Random Walk with Restart
+
+* **File:** `randomized-walk-for-directed-stcon.cpp`
+* **Problem:** Determine if a path exists from vertex `s` to vertex `t` in a **directed graph** using a random walk with a restart mechanism.
+* **Core Idea (Handling Sinks):**
+    * Unlike undirected graphs, directed graphs can have **sinks** (vertices with no outgoing edges) or regions unreachable from certain starting points.
+    * A pure random walk can get "stuck" in a sink that isn't the target.
+    * This implementation uses a **restart strategy**: when the walk reaches a node with no outgoing edges, it **restarts from `s`**.
+    * The restart mechanism gives the walk multiple attempts to explore different paths.
+    * While not as theoretically robust as the logspace STCON algorithm (Section 6.6.2), it provides a simple heuristic.
+* **Implementation Details:**
+    * Uses $2n^3$ maximum steps (similar to USTCON)
+    * Restarts from `s` when encountering a node with no neighbors
+    * Tests connected line graphs, disconnected graphs, and graphs with sinks
+    * Shows both successful pathfinding and proper failure detection
+
+### 5. Random Walk on Expander Graph (Mixing Time Simulation)
+
+* **File:** `random-walk-on-expander-graph.cpp`
+* **Problem:** Demonstrate the concept of **rapid mixing** on expander graphs versus slow mixing on non-expander graphs.
+* **Core Idea (Expander Properties):**
+    * An **expander graph** has good connectivity properties that cause random walks to "mix" quickly, meaning the probability distribution over vertices approaches uniform in few steps.
+    * A **non-expander** (like a path) has poor connectivity, causing random walks to mix slowly.
+    * This implementation simulates many random walks and measures the distribution of ending vertices after a fixed number of steps.
+    * On the expander (complete graph $K_5$), the distribution becomes nearly uniform after just 4 steps.
+    * On the path graph, the distribution remains heavily localized near the starting vertex.
+* **Implementation Details:**
+    * Compares complete graph (expander) vs. path graph (non-expander)
+    * Runs 100,000 simulations for statistical accuracy
+    * Measures and displays distribution percentages
+    * Visualizes the mixing rate difference empirically
+    * Demonstrates foundation for BPP amplification technique
+
+### 6. BPP Probability Amplification (Section 6.8)
+
+* **File:** `probability-amplification.cpp`
+* **Problem:** Reduce the error of a BPP (Bounded-error Probabilistic Polynomial-time) algorithm from a constant (e.g., 1/100) to an exponentially small value ($1/2^k$) using fewer random bits than independent trials.
 * **Core Idea (Rapidly Mixing Walk):**
     * Instead of running $k$ independent trials (which requires $k \times n$ random bits), this algorithm uses a **random walk on an implicit expander graph**.
     * The "vertices" of this graph are all $N = 2^n$ possible random strings.
-    * The "edges" are defined by $d$ random "shift" vectors $S_1, \dots, S_d$. A step in the walk is defined as $r_i = r_{i-1} \oplus S_j$ for a random $j$.
-    * Because this (implicit) graph is an expander, the random walk is **rapidly mixing** (Theorem 6.21). This means the sequence of strings $r_1, \dots, r_{7k}$ it generates becomes "un-correlated" very quickly.
-    * This "pseudorandom" sequence is "random-like" enough to achieve the same exponential error reduction as a truly random sequence, but using far fewer initial random bits (only $n(d+1)$ bits).
+    * The "edges" are defined implicitly: from a random string $r$, we can transition to a "neighbor" by flipping a single bit (determined by a hash function).
+    * A step in the walk either stays at the current node (with probability 1/2) or moves to a neighbor (with probability 1/2, choosing uniformly among 7 possible neighbors).
+    * Because this implicit graph has expander properties, the walk **mixes rapidly**. After just $\beta = 3$ steps, the new random string is "sufficiently independent" from the previous one.
+    * The algorithm runs the BPP algorithm $7k$ times, using this rapidly-mixing walk to generate "pseudo-random" inputs.
+    * The majority vote across these $7k$ trials reduces the error exponentially, but uses only $O(n + k)$ random bits instead of $O(kn)$.
+* **Implementation Details:**
+    * Simulates a mock BPP algorithm with 1% error rate
+    * Generates random strings of length $n = 20$
+    * Amplifies probability for $k = 5$ (target error $< 1/32$)
+    * Uses walk parameter $\beta = 3$ and $7k$ trials
+    * Compares error rates: single run (~1%) vs. amplified (<0.01%)
+    * Demonstrates bit complexity: single run uses $n$ bits, amplified uses $n + O(k)$ bits
+    * Runs 20,000 simulations to measure empirical error rates
+    * Shows effectiveness of expander-based derandomization technique
 
 ---
 
